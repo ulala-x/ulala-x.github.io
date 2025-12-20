@@ -1,30 +1,22 @@
-# Jekyll
-_site/
-.sass-cache/
-.jekyll-cache/
-.jekyll-metadata
-vendor/
+# Astro build output
+dist/
 
-# Ruby
-*.gem
-*.rbc
-/.config
-/coverage/
-/InstalledFiles
-/pkg/
-/spec/reports/
-/spec/examples.txt
-/test/tmp/
-/test/version_tmp/
-/tmp/
+# Astro generated types
+.astro/
 
-# Bundler
-/.bundle/
-/vendor/bundle
-/lib/bundler/man/
+# Dependencies
+node_modules/
 
-# RubyGems
-Gemfile.lock
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment variables
+.env
+.env.production
 
 # OS
 .DS_Store
@@ -42,9 +34,5 @@ Thumbs.db
 *.swo
 *~
 
-# Node (if using Node-based tools)
-node_modules/
-package-lock.json
-
-# Misc
-*.log
+# Pagefind
+public/pagefind
