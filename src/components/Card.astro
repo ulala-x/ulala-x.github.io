@@ -12,11 +12,11 @@ const { variant = "h2", data, id, filePath } = Astro.props;
 
 const { title, description, pubDatetime, modDatetime, timezone, lang } = data;
 
-// Generate path and fix routing for language-specific paths
+// Generate unified path pattern: /{lang}/posts/{slug}
 let postPath = getPath(id, filePath);
 if (lang === "ko") {
-  // Korean: /posts/ko/slug -> /posts/slug
-  postPath = postPath.replace(/\/ko\//, '/');
+  // Korean: /posts/ko/slug -> /ko/posts/slug
+  postPath = postPath.replace(/^\/posts\/ko\//, '/ko/posts/');
 } else if (lang === "en") {
   // English: /posts/en/slug -> /en/posts/slug
   postPath = postPath.replace(/^\/posts\/en\//, '/en/posts/');
