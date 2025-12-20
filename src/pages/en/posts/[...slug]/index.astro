@@ -12,7 +12,7 @@ export async function getStaticPaths() {
   const allPosts = await getCollection("blog", ({ data }) => !data.draft);
   const posts = allPosts.filter(({ data }) => data.lang === "en");
   const postResult = posts.map(post => ({
-    params: { slug: getPath(post.id, post.filePath, false) },
+    params: { slug: getPath(post.id, post.filePath, false).replace(/^\/en\//, '/') },
     props: { post },
   }));
 

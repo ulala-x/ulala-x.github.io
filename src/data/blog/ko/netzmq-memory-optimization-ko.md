@@ -2,7 +2,7 @@
 author: Ulala-X
 pubDatetime: 2025-12-20T00:00:00+09:00
 title: Net.ZMQ에서 Message Pooling과 ZeroCopy를 사용하지 않는 이유
-slug: netzmq-memory-optimization
+slug: netzmq-memory-optimization-ko
 featured: true
 draft: false
 lang: ko
