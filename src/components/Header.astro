@@ -9,7 +9,7 @@ import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import LinkButton from "./LinkButton.astro";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
 import { SITE } from "@/config";
-import type { Lang } from "@/utils/i18n";
+import { getLangPrefix, type Lang } from "@/utils/i18n";
 
 const { pathname } = Astro.url;
 
@@ -20,11 +20,15 @@ const currentPath =
 // Detect current language from pathname
 const currentLang: Lang = pathname.startsWith("/en") ? "en" : "ko";
 
-const isActive = (path: string) => {
-  const currentPathArray = currentPath.split("/").filter(p => p.trim());
-  const pathArray = path.split("/").filter(p => p.trim());
+// Get language prefix for navigation links
+const langPrefix = getLangPrefix(currentLang);
 
-  return currentPath === path || currentPathArray[0] === pathArray[0];
+const isActive = (path: string) => {
+  const fullPath = `${langPrefix}${path}`;
+  const currentPathArray = currentPath.split("/").filter(p => p.trim());
+  const pathArray = fullPath.split("/").filter(p => p.trim());
+
+  return currentPath === fullPath || currentPathArray[0] === pathArray[0];
 };
 ---
 
@@ -45,7 +49,7 @@ const isActive = (path: string) => {
       class="relative flex w-full items-baseline justify-between bg-background p-4 sm:items-center sm:py-6"
     >
       <a
-        href="/"
+        href={langPrefix || "/"}
         class="absolute py-1 text-xl leading-8 font-semibold whitespace-nowrap sm:static sm:my-auto sm:text-2xl sm:leading-none"
       >
         {SITE.title}
@@ -74,17 +78,17 @@ const isActive = (path: string) => {
           ]}
         >
           <li class="col-span-2">
-            <a href="/posts" class:list={{ "active-nav": isActive("/posts") }}>
+            <a href={`${langPrefix}/posts`} class:list={{ "active-nav": isActive("/posts") }}>
               Posts
             </a>
           </li>
           <li class="col-span-2">
-            <a href="/tags" class:list={{ "active-nav": isActive("/tags") }}>
+            <a href={`${langPrefix}/tags`} class:list={{ "active-nav": isActive("/tags") }}>
               Tags
             </a>
           </li>
           <li class="col-span-2">
-            <a href="/about" class:list={{ "active-nav": isActive("/about") }}>
+            <a href={`${langPrefix}/about`} class:list={{ "active-nav": isActive("/about") }}>
               About
             </a>
           </li>
@@ -92,7 +96,7 @@ const isActive = (path: string) => {
             SITE.showArchives && (
               <li class="col-span-2">
                 <LinkButton
-                  href="/archives"
+                  href={`${langPrefix}/archives`}
                   class:list={[
                     "focus-outline flex justify-center p-3 sm:p-1",
                     {
@@ -110,7 +114,7 @@ const isActive = (path: string) => {
           }
           <li class="col-span-1 flex items-center justify-center">
             <LinkButton
-              href="/search"
+              href={`${langPrefix}/search`}
               class:list={[
                 "focus-outline flex p-3 sm:p-1",
                 { "[&>svg]:stroke-accent": isActive("/search") },
