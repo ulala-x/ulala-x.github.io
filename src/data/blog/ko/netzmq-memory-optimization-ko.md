@@ -6,6 +6,7 @@ slug: netzmq-memory-optimization-ko
 featured: true
 draft: false
 lang: ko
+lang_ref: netzmq-memory-optimization
 tags:
   - zeromq
   - netzmq
