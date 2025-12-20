@@ -2,10 +2,10 @@
 
 lang: en-US
 
-title: Ulala-X Tech Blog
-tagline: Technical blog about game servers, web servers, and open source projects
+title: ULALA-X Dev Notes
+tagline: Game Servers & Server Communication
 description: >-
-  Technical blog about game servers, web servers, and open source projects
-  including playhouse and zeromq.
+  Development notes and experiences on game servers and server communication,
+  featuring open source projects like playhouse and zeromq.
 
 baseurl: "/en"

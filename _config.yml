@@ -8,11 +8,11 @@ lang: ko-KR
 timezone: Asia/Seoul
 
 # Site Settings
-title: Ulala-X 기술 블로그
-tagline: 게임 서버, 웹 서버, 오픈소스 프로젝트에 대한 기술 블로그
+title: ULALA-X 개발 노트
+tagline: 게임 서버 & 서버간 통신
 description: >-
-  게임 서버, 웹 서버, 그리고 오픈소스 프로젝트(playhouse, zeromq)에 대한
-  기술 블로그입니다.
+  게임 서버와 서버간 통신에 대한 개발 경험과 오픈소스 프로젝트
+  (playhouse, zeromq)를 기록하는 공간입니다.
 
 # Base URL - for GitHub Pages user site
 url: "https://ulala-x.github.io"
