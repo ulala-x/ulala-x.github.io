@@ -1,7 +1,7 @@
 ---
 author: Ulala-X
 pubDatetime: 2025-12-20T00:00:00+09:00
-title: I Deleted 697 Lines and Got 16% Faster
+title: Why Net.ZMQ Doesn't Use Message Pooling or ZeroCopy
 slug: en/netzmq-memory-optimization
 featured: true
 draft: false
@@ -11,50 +11,57 @@ tags:
   - performance
   - optimization
   - csharp
-description: A confession about "obvious optimizations" that made everything slower
+description: Performance Optimization Verification - Benchmark Data-Driven Analysis
 ---
 
-# I Deleted 697 Lines and Got 16% Faster
+# Why Net.ZMQ Doesn't Use Message Pooling or ZeroCopy
 
-> A confession about "obvious optimizations" that made everything slower
+> Performance Optimization Verification: Benchmark Data-Driven Analysis
 
 **December 20, 2025** / Commits: [32b4ee2](https://github.com/ulalax/netzmq/commit/32b4ee2), [d122e62](https://github.com/ulalax/netzmq/commit/d122e62)
 
 ---
 
-## How It Started
+## Overview
 
-Working on NetZMQ, I implemented two "obvious" optimizations:
+ZeroMQ is a high-performance asynchronous messaging library capable of processing millions of messages per second. When using such a high-performance library in .NET, developers naturally consider two optimizations:
 
-1. **MessagePool** - Pre-allocate native memory and reuse it. Obviously faster, right?
-2. **ZeroCopy** - Skip the copy. No copy = faster, right?
+> "Wouldn't memory pooling reduce allocation overhead?"
+> "Wouldn't ZeroCopy eliminate copy costs?"
 
-I finished the 697-line MessagePool implementation. Wrote 1,753 lines of tests. All tests passed. Now just run the benchmarks and watch the performance soar. Maybe 2x faster?
+These optimizations seem theoretically obvious. However, Net.ZMQ does not provide these features.
 
-Ran BenchmarkDotNet.
+This article shares the results of actually implementing and measuring these two optimization techniques. It explains why "seemingly obvious" optimizations were not adopted, backed by benchmark data.
+
+### Verified Optimization Techniques
+
+1. **MessagePool**: Reducing allocation overhead through native memory pooling
+2. **ZeroCopy**: Performance improvement through memory copy elimination
+
+### Measurement Results
 
 ```
-MessagePool: 7-16% slower
-ZeroCopy: 2.43x slower on small messages
+MessagePool: 27% faster for small messages (≤512B), 11% slower for large messages, performance crash under burst load
+ZeroCopy: 2.43x slower for small messages, effective from 64KB onwards
 ```
 
-...wait, what?
+### Conclusion
 
-This is the story of how my "obvious optimizations" made everything worse, and how I ended up deleting 4,185 lines of code.
+Despite theoretical benefits, both techniques were decided not to be adopted in actual environments. This article explains why, along with benchmark data.
 
 ---
 
-## Chapter 1: MessagePool, or "This Will Obviously Be Faster"
+## Chapter 1: MessagePool - Native Memory Pooling Verification
 
-### The Idea That Made Too Much Sense
+### Background: Why MessagePool Was Needed
 
-The thinking was simple:
+Net.ZMQ must handle ZeroMQ's native messages (`zmq_msg_t`). Each message send/receive operation involves native memory allocation/deallocation, which can be a source of performance overhead.
 
-> Allocating and freeing native memory is expensive. So pre-allocate and reuse. Duh.
+**Hypothesis**: Pre-allocating and reusing native memory can reduce allocation overhead.
 
-Object pooling is Performance 101. .NET even has ArrayPool built-in. A pool for native memory? Should be a no-brainer.
+**Note**: .NET's ArrayPool pools managed memory. MessagePool required a separate mechanism to pool native memory (`zmq_msg_t`).
 
-So I started implementing. Properly:
+### Implementation: Native Memory Pooling Mechanism
 
 ```csharp
 public sealed class MessagePool
@@ -98,65 +105,51 @@ using var msg = socket.ReceiveWithPool();  // Rent from pool
 // Automatically returns to pool on Dispose
 ```
 
-### The Journey Down the Rabbit Hole
+### Implementation Details
 
-As I implemented it, the code kept growing with "oh, I need to handle this" and "wait, what about that":
+MessagePool was developed through several iterations:
 
-- **f195d1c**: Initial implementation (+200 lines) - "Easy!"
-- **78816d9**: Double-free bug found... fixed (+500 lines) - "Hmm..."
-- **45ac578**: Message object reuse (+100 lines) - "More optimization!"
-- **cb81713**: Need ActualSize tracking (+150 lines) - "Okay..."
-- **e8527f8**: Thread-safety with Interlocked (+80 lines) - "Right..."
-- **d122e62**: Comprehensive tests (+1,753 lines) - "Perfect!"
+- **f195d1c**: Initial implementation (+200 lines)
+- **78816d9**: Double-free bug fix (+500 lines)
+- **45ac578**: Message object reuse (+100 lines)
+- **cb81713**: ActualSize tracking (+150 lines)
+- **e8527f8**: Thread-safety with Interlocked counters (+80 lines)
+- **d122e62**: Comprehensive tests (+1,753 lines)
 
-**Final tally**:
+**Final Result**:
 - MessagePool.cs: **697 lines**
 - MessagePoolTests.cs: **1,753 lines**
-- My confidence: **100%**
+- All tests passed, no memory leaks
 
-All tests green. No memory leaks. Code reviewed.
+### Benchmark Results
 
-Time to run the benchmarks. I was expecting at least 30% improvement.
+**Test Environment**:
+- CPU: Intel Core Ultra 7 265K (20 cores)
+- OS: Ubuntu 24.04.3 LTS
+- Runtime: .NET 8.0.22
+- BenchmarkDotNet v0.14.0
 
-### The Benchmark: "Wait, Something's Wrong"
+**Measurement Results**:
 
-```bash
-$ dotnet run -c Release --filter "*ReceivePoolProfilingTest*"
-```
+| Message Size | Baseline (new Message) | ReceiveWithPool | Ratio |
+|--------------|------------------------|-----------------|-------|
+| **64B** | 3.33 ms (3.00M msg/sec) | 2.41 ms (4.16M msg/sec) | **0.72x (27% faster)** |
+| **1KB** | 7.25 ms (1.38M msg/sec) | 7.69 ms (1.30M msg/sec) | **1.06x (nearly same)** |
+| **64KB** | 134.3 ms (74.5K msg/sec) | 149.4 ms (66.9K msg/sec) | **1.11x (11% slower)** |
 
-Grabbed coffee. Waited confidently for the beautiful performance numbers.
+**Observations**:
+- ≤512B: Allocation overhead reduction exceeds copy cost
+- ≥1KB: Copy cost becomes comparable to allocation savings
+- 64KB: Copy cost exceeds allocation savings
 
-Results came in:
+**Additional Test - Burst Load**:
+When testing send/receive in burst patterns, Pool version's performance degraded significantly. ConcurrentStack synchronization cost and cross-thread cache misses became much more severe under load.
 
-| Message Size | Regular Receive | ReceiveWithPool | Difference |
-|--------------|-----------------|-----------------|------------|
-| **64B** | 2.19 ms (4.57M msg/sec) | 2.35 ms (4.25M msg/sec) | **+7.5% slower** |
-| **1KB** | 7.54 ms (1.33M msg/sec) | 8.75 ms (1.14M msg/sec) | **+16.1% slower** |
-| **64KB** | 139.9 ms (71.5K msg/sec) | 150.5 ms (66.5K msg/sec) | **+7.6% slower** |
+### Root Cause Analysis
 
-...huh?
+Performance characteristics were analyzed through profiler and additional benchmarks.
 
-Ran it again thinking the benchmark was wrong. Same results.
-
-Checked compilation flags. `-c Release`. Correct.
-
-Cleared cache and rebuilt. Same results.
-
-**My 697-line optimization made everything 7-16% slower.**
-
-All tests passed, but performance tanked. How is this even possible?
-
-### Root Cause Analysis: What Went Wrong
-
-Spent days digging through code and profiling. The problems were pretty clear.
-
-And I found my biggest wrong assumption:
-
-> **"Reducing allocations will obviously make it faster"**
-
-Generally true. Memory allocation (malloc/new) is slower than copying. That's why pooling works.
-
-But this case was different:
+#### Key Question: Why does performance vary with message size?
 
 **Actual implementation**:
 ```csharp
@@ -179,14 +172,14 @@ public Message? ReceiveWithPool(RecvFlags flags)
 }
 ```
 
-**Cost analysis**:
+**Cost Analysis**:
 - **≤512B**: Allocation savings >> Copy cost → **Pool clearly faster** (27% at 64B) ✓
 - **1KB**: Allocation savings ≈ Copy cost → **About the same** (Pool or not, no difference)
 - **64KB**: Allocation savings << Copy cost → **Pool 11% slower** ✗
 
-Copy cost scales with message size. Beyond 512B, copy cost starts catching up with allocation savings.
+Copy cost scales proportionally with message size. Beyond 512B, copy cost starts catching up with allocation savings.
 
-Measured copy-only overhead in benchmarks:
+Copy-only overhead measured in benchmarks:
 
 | Message Size | SpanCopy Overhead | % of Total |
 |--------------|------------------|------------|
@@ -196,9 +189,9 @@ Measured copy-only overhead in benchmarks:
 
 Copy is negligible for small messages, but **takes 6.4% of total time at 64KB**.
 
-Why did we need to copy?
+Why is copying necessary?
 
-ZeroMQ's `zmq_recv()` allocates memory internally when receiving messages. We can't control it. So:
+ZeroMQ's `zmq_recv()` internally allocates memory when receiving messages. This is not under our control. Therefore:
 1. Pre-allocate a large buffer (4MB)
 2. Receive into it
 3. Rent from pool with actual size
@@ -206,7 +199,7 @@ ZeroMQ's `zmq_recv()` allocates memory internally when receiving messages. We ca
 
 Advantage: Can bypass ZeroMQ allocation. Disadvantage: Copy is mandatory.
 
-For small messages, "ZeroMQ allocation savings > copy cost" is profitable, but as messages grow, copy cost dominates.
+For small messages, "ZeroMQ allocation savings > copy cost" is beneficial, but as messages grow, copy cost becomes dominant.
 
 #### 2. **LIFO Inefficiency** (Cross-thread Scenarios)
 
@@ -253,56 +246,40 @@ public Message Rent(int size)
 - Interlocked counter update cost
 - Bucket index calculation cost
 
-### The Decision: Pressing Delete
+### Decision: Why MessagePool Was Removed
 
-Stared at the code for a while.
-
-"But... it was clearly faster for ≤512B messages..."
-"Small messages showed real improvements..."
-"Maybe I'll need it later?"
-
-But thinking objectively:
+**Performance Characteristics Summary**:
 - **≤512B**: Pool clearly faster (27% improvement)
-- **≥1KB**: Pool or not, about the same
-- **64KB**: Pool 11% slower (copy cost)
+- **≥1KB**: Pool or baseline nearly identical
+- **64KB**: Pool 11% slower (copy cost increase)
+- **Burst load**: Pool performance crash (synchronization overhead)
 
-And the critical issue: **Burst Testing**
+**Decision Criteria**:
+1. Real-world environments use various message sizes
+2. Burst loads occur frequently in actual environments
+3. 697 lines of implementation + 1,753 lines of tests = high maintenance cost
 
-When testing send/receive more aggressively (burst pattern), Pool version's performance dropped significantly. ConcurrentStack synchronization cost and cross-thread cache misses became much more severe under load.
-
-Conclusion:
-- Only benefits small messages
-- Actually unstable under load
-- Significantly increased complexity
-
-From multiple perspectives, just using Message is better.
-
-December 20th, wrote the commit message:
+**Final Decision**:
+Decided to remove MessagePool as its benefits did not justify the complexity.
 
 ```bash
 $ git commit -m "Remove MessagePool and simplify memory strategies"
 # 14 files changed, 271 insertions(+), 4185 deletions(-)
 ```
 
-**Deleted 4,185 lines.**
-
-It worked for small messages, but real-world usage has larger messages. The complexity wasn't justified by the gains.
-
-Sometimes deleting code is harder than writing it. Especially code you spent a week on.
+**Code Removed**: 4,185 lines
 
 ---
 
-## Chapter 2: "Just Skip The Copy" - Second Mistake
+## Chapter 2: ZeroCopy - Memory Copy Elimination Verification
 
-### The Temptation of Zero-Copy
+### Background: Theoretical Benefits of ZeroCopy
 
-After deleting MessagePool, had a thought:
+During MessagePool analysis, memory copying was identified as one of the major overheads. Accordingly, the ZeroCopy approach that eliminates copying was verified.
 
-> "Right, the problem was copying. So just... don't copy?"
+**Hypothesis**: Eliminating memory copy will improve performance, especially for large messages.
 
-Zero-Copy. Even the name sounds good. Zero copies. Can't argue with zero.
-
-The concept is simple:
+### ZeroCopy Concept
 
 ```csharp
 // Normal way: Data copying occurs
@@ -325,11 +302,9 @@ socket.Send(msg);  // Pass pointer only, no copy!
 **Expected Benefits**:
 - Eliminate managed → native memory copy
 - Reduce GC pressure
-- Huge performance gains for large messages
+- Significant performance gains for large messages
 
-### The Benchmarks: Deja Vu
-
-Learned my lesson this time. Implemented it, ran benchmarks immediately.
+### Benchmark Results
 
 #### 64B Messages
 
@@ -340,40 +315,44 @@ Learned my lesson this time. Implemented it, ran benchmarks immediately.
 | Message | 2.34M msg/sec | 168 KB |
 | **MessageZeroCopy** | **1.69M msg/sec** | 168 KB |
 
-...what?
-
-**Zero-copy was the slowest.** By **2.43x** compared to ArrayPool.
-
-The thing with "Zero" in its name came in last place.
+**Observation**: ZeroCopy is **2.43x slower** than ArrayPool
 
 #### 512B Messages
 
-Still slowest. **2.1x slower** than ArrayPool.
+| Strategy | Processing Time | Throughput | Ratio |
+|----------|----------------|------------|-------|
+| **ArrayPool** | **6.38 ms** | **1.57M msg/sec** | **0.95x** |
+| ByteArray | 6.71 ms | 1.49M msg/sec | 1.00x |
+| Message | 8.19 ms | 1.22M msg/sec | 1.22x |
+| MessageZeroCopy | 13.37 ms | 748K msg/sec | **1.99x** |
+
+**Observation**: ZeroCopy is **2.1x slower** than ArrayPool
 
 #### 1KB Messages
 
-Still slowest. **1.63x slower**.
+| Strategy | Processing Time | Throughput | Ratio |
+|----------|----------------|------------|-------|
+| ArrayPool | 9.02 ms | 1.11M msg/sec | 1.01x |
+| ByteArray | 8.97 ms | 1.11M msg/sec | 1.00x |
+| Message | 9.74 ms | 1.03M msg/sec | 1.09x |
+| MessageZeroCopy | 14.61 ms | 684K msg/sec | **1.63x** |
 
-#### 64KB Messages (Finally!)
+**Observation**: ZeroCopy is still slowest (**1.63x**)
 
-Tried large messages just in case:
+#### 64KB Messages - Performance Reversal
 
 | Strategy | Throughput | Allocated |
 |----------|------------|-----------|
 | **Message** | **83.9K msg/sec** | 171 KB |
 | MessageZeroCopy | 80.2K msg/sec | 171 KB |
 | ArrayPool | 70.0K msg/sec | 4.78 KB |
-| ByteArray | 70.6K msg/sec | 4GB! |
+| ByteArray | 70.6K msg/sec | 4GB |
 
-**Finally!** At 64KB, native memory beat ArrayPool by **16%**.
+**Observation**: At 64KB, native memory (Message/MessageZeroCopy) is **16% faster** than ArrayPool
 
-Okay, so zero-copy isn't completely useless.
+### Root Cause Analysis: ZeroCopy Overhead
 
-### Why? No Copy Should Be Faster, Right?
-
-Spent a while thinking about this. No copying should obviously be faster, right?
-
-Turns out **"not copying" also has a cost**.
+Analysis was conducted on why performance degraded for small messages despite eliminating copying.
 
 #### 1. P/Invoke Is Expensive
 
@@ -410,61 +389,55 @@ ArrayPool<byte>.Shared.Return(buffer);           // O(1) return
 - Array return: ~20ns
 - **Total overhead: ~90ns**
 
-#### 3. Let's Do The Math
+#### 3. Cost Calculation
 
 Time to copy 64 bytes:
-- About **10ns**
+- Approximately **1ns** (benchmark: 10.71μs / 10,000 messages = 1.07ns)
 
 Time saved with ZeroCopy:
-- No copy, so **10ns**
+- No copy, so **1ns**
 
 Time spent to enable ZeroCopy:
 - P/Invoke, GCHandle, Callback, etc... **450ns**
 
-**Net loss: 440ns**
+**Net loss: 449ns**
 
-We saved 10ns by not copying, but spent 450ns to make it happen.
+64-byte copy is not performed, saving 1ns, but 450ns is spent to enable it.
 
 This is the zero-copy paradox.
 
-So when does it break even? Math says around 2-3KB, but actual benchmarks show **64KB**. Why?
+When is the break-even point? Calculations suggest around 2-3KB, but actual benchmarks show **64KB**. Why?
 
 #### 4. Additional Factors
 
-- **CPU cache**: Small data stays in L1/L2 cache, copy is super fast
-- **.NET JIT**: Managed memory copy gets SIMD optimizations
-- **GCHandle cost**: More expensive than expected (~100ns)
-- **Callback overhead**: Crossing managed-unmanaged boundary costs
+- **CPU cache effect**: Small data stays in L1/L2 cache, making copy very fast
+- **.NET JIT optimization**: Managed memory copy is optimized with SIMD instructions
+- **GCHandle cost**: GCHandle is more expensive than expected (~100ns)
+- **Callback overhead**: Cost of crossing managed-unmanaged boundary
 
-### .NET Is Faster Than You Think
+### Cost Comparison Analysis
 
-What I learned:
-
-> **The .NET team spent 20+ years optimizing managed memory. It's no joke.**
-
-Just look at ArrayPool:
-- Lock-free (mostly)
-- Per-thread caching
+**ArrayPool (Managed Memory)**:
+- Lock-free operation (in most cases)
+- Thread-local caching
 - SIMD-optimized copying
-- Cache-friendly design
+- CPU cache friendly
 
-Our "zero-copy":
-- P/Invoke bouncing
-- GCHandle juggling
+**ZeroCopy (Native Memory)**:
+- P/Invoke transition overhead
+- GCHandle management
 - Callback marshalling
-- Native memory allocation
+- Native memory allocation/deallocation
 
-**The verdict**:
-- Small messages (≤512B): .NET managed memory dominates
-- Large messages (≥64KB): Native memory barely wins
-
-Don't fight the framework.
+**Measurement Results**:
+- Small messages (≤512B): Managed memory (ArrayPool) is superior
+- Large messages (≥64KB): Native memory is superior
 
 ---
 
-## Final Architecture: The Victory of Simplicity
+## Final Architecture: Simplicity Wins
 
-Conclusion from MessagePool deletion and ZeroCopy benchmarks:
+Conclusions from MessagePool removal and ZeroCopy benchmarks:
 
 ### Simple 2-Tier Strategy
 
@@ -535,126 +508,213 @@ Receive Mode Selection:
 
 ---
 
-## Lessons Learned
+## Core Findings
 
-### 1. Be Careful With "Obviously"
+### 1. Importance of Measurement-Based Optimization
 
-My wrong "obvious" assumptions:
-- "Reducing allocations is obviously faster" → Only true for ≤512B. No difference from 1KB, slower at 64KB
-- "Pooling is obviously faster" → Completely depends on message size and load pattern
-- "Zero-copy is obviously faster" → 2.43x slower
-- "Native is obviously faster than managed" → ArrayPool was faster
+**Difference Between Theory and Actual Performance**:
+- MessagePool: The benefit of reducing allocation actually exists, but copy cost and synchronization overhead offset this above certain sizes
+- ZeroCopy: The benefit of eliminating copy is smaller than interop overhead (P/Invoke, GCHandle, etc.) for small messages
 
-Before benchmarks, they all sounded right.
+**Copy Cost Scaling**:
+- 64B: 10.7μs (10,000 messages)
+- 1KB: 105.3μs (10,000 messages)
+- 64KB: 9,506μs (10,000 messages)
 
-**Biggest mistake**:
-- The general rule (allocation > copy) is correct
-- That's why pooling actually worked for small messages (≤512B)
-- But **copy cost scales with message size**
-- 64B: 10.7μs → 1KB: 105.3μs → 64KB: 9,506μs
-- Beyond 512B, copy cost catches up with allocation savings
-- And **under burst load, synchronization cost explodes**
+Copy cost increases linearly with message size. Starting from 512B, copy cost begins to exceed allocation savings.
 
-**Lessons**:
-- Don't optimize just one part without calculating total cost
-- Test not just normal load but also maximum load scenarios
+**Impact of Load Patterns**:
+Performance characteristics differ between normal load and burst load. MessagePool showed rapid performance degradation under burst conditions due to synchronization overhead.
 
-Now I think first: "Really? Did you measure it?"
+**Conclusion**: Actual measurement through benchmarks is essential.
 
-### 2. Don't Underestimate Framework Optimizations
+### 2. Complexity vs Performance Gains
 
-What the .NET team has optimized over 20+ years:
+**MessagePool Complexity**:
+- 697 lines of implementation
+- 1,753 lines of tests
+- 19 size-based bucket management
+- Thread-safe mechanisms (ConcurrentStack, Interlocked)
+- Statistics tracking and monitoring
 
-- **ArrayPool**: Lock-free, thread-local caching, SIMD
-- **GC**: Generational collection, LOH, compaction
-- **JIT**: Runtime optimization, inlining
+**Performance Characteristics**:
+- ≤512B: 27% performance improvement
+- ≥1KB: Minimal performance difference
+- 64KB: 11% performance degradation
+- Burst load: Severe performance degradation
 
-ArrayPool was faster than my custom native pooling. Framework-provided optimized tools are usually superior to custom implementations in most cases.
+**Decision**:
+In real environments, various message sizes and variable load patterns exist. Performance gains in limited cases did not justify code complexity and maintenance costs.
 
-Use proven tools first, and only consider custom implementations when bottlenecks are actually measured.
+### 3. Interop Is Expensive
 
-### 3. Code Is A Liability, Not An Asset
-
-MessagePool:
-- 697 lines implementation
-- 1,753 lines tests
-- 19 buckets
-- ConcurrentStack
-- Interlocked counters
-- Statistics tracking
-- Various bug fixes
-
-**Result**:
-- Clearly faster at ≤512B (good!)
-- No difference at ≥1KB (hmm...)
-- 11% slower at 64KB (bad!)
-- Performance crash under burst load (critical!)
-
-Real-world usage has many large messages and bursty load patterns. Complexity wasn't justified.
-
-Deleted 4,185 lines, code got simpler and large message performance improved. More code ≠ better.
-
-### 4. Interop Is Expensive
-
-Crossing .NET ↔ native boundary is way more expensive than you think:
+Crossing the .NET ↔ native code boundary is more expensive than expected:
 
 - P/Invoke: ~50ns
 - GCHandle: ~100ns
 - Callback: ~100ns
-- Native alloc: ~100ns
+- Native allocation: ~100ns
 - **Total: ~450ns**
 
-Copying 64 bytes: **~10ns**
+Copying 64 bytes: **~1ns**
 
-**45x difference.**
+**450x difference.**
 
-Stay in .NET when possible.
+When possible, solving problems within .NET is preferable.
 
-### 5. Deleting Takes Courage Too
+### 4. Code Removal Criteria
 
-Measure performance → Bad → Delete code
+**Verification Process**:
+1. Hypothesis formulation
+2. Implementation and testing
+3. Benchmark measurement
+4. Real environment simulation
+5. Cost-benefit analysis
+6. Decision making
 
-That's the answer, but pressing Delete isn't easy.
+**Removal Criteria**:
+- Measured performance gains < Complexity cost
+- Effective only in limited use cases
+- Vulnerable to load pattern changes
 
-Especially on code you spent a week on.
-
-But sometimes deleting code is the better choice. This time I deleted 4,185 lines and got 16% faster.
-
----
-
-## The End
-
-Started this project wanting to add "optimizations".
-
-Ended it by deleting "optimizations".
-
-**What I Deleted**:
-- MessagePool 697 lines
-- Tests 1,753 lines
-- 4 benchmark classes
-- Complex bucket logic
-- My pride
-
-**What I Got**:
-- 16% performance improvement
-- Simpler code
-- One lesson
-
-**Final Verdict**:
-
-```
-Small messages (≤512B): Use ArrayPool<byte>.Shared
-Large messages (>512B):  Use Message/MessageZeroCopy
-```
-
-Simple.
-
-And next time someone says "this will obviously be faster", I'll ask:
-
-> "Really? Did you benchmark it?"
+In this case, 4,185 lines of code were removed.
 
 ---
 
-December 2025
+## Summary and Recommendations
 
-*"Measure, learn, and sometimes delete."*
+### Net.ZMQ Memory Management Strategy
+
+**Adopted Approach**:
+```
+Message size ≤ 512B:  ArrayPool<byte>.Shared (managed memory pooling)
+Message size > 512B:  Message (native memory)
+```
+
+### Performance Measurement Summary
+
+| Technique | Advantages | Disadvantages | Conclusion |
+|-----------|------------|---------------|------------|
+| **MessagePool** | 27% faster at ≤512B | No effect at ≥1KB, performance crash under burst load | Not adopted |
+| **ZeroCopy** | Effective at ≥64KB | 2.43x slower at ≤512B | Not adopted |
+| **ArrayPool** | Best performance at ≤512B | Slower than native memory for large messages | Adopted (small messages) |
+| **Message** | Stable at all sizes | Slower than ArrayPool (small messages) | Adopted (default) |
+
+### Practical Application Guide
+
+**Which strategy is right for your project?**
+
+#### 📊 Check Message Size Patterns
+
+```csharp
+// 1. First, check your actual message size distribution
+var sizes = new List<int>();
+for (int i = 0; i < 10000; i++)
+{
+    var msg = socket.Recv();
+    sizes.Add(msg.Size);
+}
+
+var avg = sizes.Average();
+var p95 = sizes.OrderBy(x => x).ElementAt((int)(sizes.Count * 0.95));
+Console.WriteLine($"Average: {avg}B, P95: {p95}B");
+```
+
+#### ✅ Application Criteria
+
+**Case 1: Small messages (average < 512B)**
+```csharp
+// ArrayPool recommended
+var buffer = ArrayPool<byte>.Shared.Rent(size);
+try
+{
+    socket.Send(buffer.AsSpan(0, size));
+}
+finally
+{
+    ArrayPool<byte>.Shared.Return(buffer);
+}
+```
+- **Suitable for**: IoT sensor data, chat messages, event logs
+- **Expected benefits**: 99.9% GC allocation reduction vs ByteArray, similar performance
+
+**Case 2: Medium messages (512B ~ 64KB)**
+```csharp
+// Basic Message recommended
+using var msg = new Message();
+socket.Recv(ref msg);
+ProcessData(msg.Data);
+```
+- **Suitable for**: JSON payloads, typical RPC calls
+- **Characteristics**: Neither ArrayPool nor ZeroCopy provides benefits, simple approach is best
+
+**Case 3: Large messages (> 64KB)**
+```csharp
+// Message or MessageZeroCopy
+using var msg = new Message(largeData);
+socket.Send(msg);
+```
+- **Suitable for**: File transfers, image/video data, large batch data
+- **Expected benefits**: ~16% performance improvement vs ArrayPool
+
+**Case 4: Mixed patterns (various sizes)**
+```csharp
+// Dynamic selection based on size
+if (size <= 512)
+{
+    var buffer = ArrayPool<byte>.Shared.Rent(size);
+    // Use ArrayPool
+}
+else
+{
+    var msg = new Message(size);
+    // Use Message
+}
+```
+- **Suitable for**: General-purpose messaging systems
+- **Note**: Branch overhead < 1% (negligible)
+
+#### ⚠️ What to Avoid
+
+```csharp
+// ❌ Bad Pattern 1: ZeroCopy for small messages
+if (size < 100)  // Small message
+{
+    nint ptr = Marshal.AllocHGlobal(size);  // Actually slower (2.4x)
+    // ...
+}
+
+// ❌ Bad Pattern 2: ByteArray for large messages
+byte[] data = new byte[10_000_000];  // 10MB, heavy GC pressure
+socket.Send(data);
+
+// ❌ Bad Pattern 3: Custom pooling under burst load
+// Custom pooling like MessagePool suffers from synchronization costs
+// Performance degrades rapidly under high load
+```
+
+### Value of the Verification Process
+
+Although MessagePool and ZeroCopy were not ultimately adopted, through this verification process:
+- Quantitatively identified performance characteristics of each strategy
+- Established optimal strategy based on message size
+- Confirmed the impact of load patterns on performance
+
+We hope this measurement data helps you make informed decisions in your projects.
+
+### 📚 Additional Resources
+
+- **Benchmark Code**: [GitHub - benchmarks/](https://github.com/ulalax/netzmq/tree/main/benchmarks)
+- **Actual Measurement Data**: [BenchmarkDotNet Results](https://github.com/ulalax/netzmq/tree/main/benchmarks/Net.Zmq.Benchmarks/BenchmarkDotNet.Artifacts/results)
+- **Net.ZMQ Documentation**: [Performance Guide](https://github.com/ulalax/netzmq/blob/main/docs/benchmarks.md)
+
+If you want to measure it yourself:
+```bash
+git clone https://github.com/ulalax/netzmq
+cd netzmq/benchmarks/Net.Zmq.Benchmarks
+dotnet run -c Release
+```
+
+---
+
+**December 2025**
