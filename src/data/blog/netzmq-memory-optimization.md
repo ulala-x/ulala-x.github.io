@@ -5,6 +5,7 @@ title: Net.ZMQ에서 Message Pooling과 ZeroCopy를 사용하지 않는 이유
 slug: netzmq-memory-optimization
 featured: true
 draft: false
+lang: ko
 tags:
   - zeromq
   - netzmq
