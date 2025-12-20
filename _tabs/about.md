@@ -2,7 +2,7 @@
 layout: page
 icon: fas fa-info-circle
 order: 4
-title: 소개
+title: About
 lang: ko
 ---
 
