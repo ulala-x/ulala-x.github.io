@@ -9,7 +9,7 @@ timezone: Asia/Seoul
 
 # Site Settings
 title: ULALA-X
-tagline: 게임 서버 & 서버간 통신
+tagline: Game Servers & Server Communication
 description: >-
   게임 서버와 서버간 통신에 대한 개발 경험과 오픈소스 프로젝트
   (playhouse, zeromq)를 기록하는 공간입니다.
