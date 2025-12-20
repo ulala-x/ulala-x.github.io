@@ -1,5 +1,6 @@
 ---
 import { getAlternateUrl, type Lang } from "@/utils/i18n";
+import IconGlobe from "@/assets/icons/IconGlobe.svg";
 
 interface Props {
   lang: Lang;
@@ -9,35 +10,16 @@ interface Props {
 const { lang, currentPath = "/" } = Astro.props;
 const alternateUrl = getAlternateUrl(currentPath, lang);
 const isKorean = lang === "ko";
+const targetLang = isKorean ? "EN" : "KO";
+const ariaLabel = isKorean ? "Switch to English" : "한국어로 전환";
 ---
 
-<div class="language-switcher">
-  <a
-    href={alternateUrl}
-    class="inline-flex items-center gap-1 rounded-md border border-skin-line px-3 py-1 text-sm hover:bg-skin-fill hover:text-skin-accent"
-    aria-label={isKorean ? "Switch to English" : "한국어로 전환"}
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <circle cx="12" cy="12" r="10"></circle>
-      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
-      <path d="M2 12h20"></path>
-    </svg>
-    <span>{isKorean ? "EN" : "KO"}</span>
-  </a>
-</div>
-
-<style>
-  .language-switcher {
-    display: inline-block;
-  }
-</style>
+<a
+  href={alternateUrl}
+  class="focus-outline flex p-3 sm:p-1 items-center justify-center"
+  title={ariaLabel}
+  aria-label={ariaLabel}
+>
+  <IconGlobe />
+  <span class="sr-only">{targetLang}</span>
+</a>

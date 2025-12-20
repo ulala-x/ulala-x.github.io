@@ -7,13 +7,18 @@ import IconArchive from "@/assets/icons/IconArchive.svg";
 import IconSunHigh from "@/assets/icons/IconSunHigh.svg";
 import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import LinkButton from "./LinkButton.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
 import { SITE } from "@/config";
+import type { Lang } from "@/utils/i18n";
 
 const { pathname } = Astro.url;
 
 // Remove trailing slash from current pathname if exists
 const currentPath =
   pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+
+// Detect current language from pathname
+const currentLang: Lang = pathname.startsWith("/en") ? "en" : "ko";
 
 const isActive = (path: string) => {
   const currentPathArray = currentPath.split("/").filter(p => p.trim());
@@ -116,6 +121,9 @@ const isActive = (path: string) => {
               <IconSearch />
               <span class="sr-only">Search</span>
             </LinkButton>
+          </li>
+          <li class="col-span-1 flex items-center justify-center">
+            <LanguageSwitcher lang={currentLang} currentPath={currentPath} />
           </li>
           {
             SITE.lightAndDarkMode && (
