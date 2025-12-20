@@ -2,7 +2,7 @@
 author: Ulala-X
 pubDatetime: 2025-12-20T00:00:00+09:00
 title: Why Net.ZMQ Doesn't Use Message Pooling or ZeroCopy
-slug: en/netzmq-memory-optimization
+slug: netzmq-memory-optimization
 featured: true
 draft: false
 lang: en
