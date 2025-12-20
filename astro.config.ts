@@ -18,8 +18,16 @@ export default defineConfig({
     defaultLocale: "ko",
     locales: ["ko", "en"],
     routing: {
-      prefixDefaultLocale: false,
+      prefixDefaultLocale: true,
     },
+  },
+  redirects: {
+    "/": "/ko",
+    "/about": "/ko/about",
+    "/posts": "/ko/posts",
+    "/tags": "/ko/tags",
+    "/archives": "/ko/archives",
+    "/search": "/ko/search",
   },
   integrations: [
     sitemap({

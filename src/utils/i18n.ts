@@ -64,34 +64,27 @@ export function getAlternateLang(lang: Lang): Lang {
 }
 
 export function getLangPrefix(lang: Lang): string {
-  return lang === "ko" ? "" : "/en";
+  return lang === "ko" ? "/ko" : "/en";
 }
 
 export function getAlternateUrl(currentPath: string, currentLang: Lang): string {
   if (currentLang === "ko") {
-    // Korean to English
+    // Korean to English: /ko/* -> /en/*
     // Handle /ko/posts/{slug} -> /en/posts/{slug}
     if (currentPath.startsWith("/ko/posts/")) {
       const slug = currentPath.replace(/^\/ko\/posts\//, '').replace(/-ko$/, '');
       return `/en/posts/${slug}`;
     }
     // Handle /ko/{page} -> /en/{page}
-    if (currentPath.startsWith("/ko/")) {
-      return currentPath.replace(/^\/ko/, '/en');
-    }
-    // Handle legacy /{page} -> /en/{page}
-    return `/en${currentPath}`;
+    return currentPath.replace(/^\/ko/, '/en');
   } else {
-    // English to Korean
+    // English to Korean: /en/* -> /ko/*
     // Handle /en/posts/{slug} -> /ko/posts/{slug}
     if (currentPath.startsWith("/en/posts/")) {
       const slug = currentPath.replace(/^\/en\/posts\//, '');
       return `/ko/posts/${slug}-ko`;
     }
-    // Handle /en/{page} -> /ko/{page} or /{page}
-    if (currentPath.startsWith("/en/")) {
-      return currentPath.replace(/^\/en/, '/ko');
-    }
-    return currentPath || "/";
+    // Handle /en/{page} -> /ko/{page}
+    return currentPath.replace(/^\/en/, '/ko');
   }
 }
