@@ -1,4 +1,4 @@
-# Technical Blog Architecture Documentation
+# ULALA-X Dev Notes - Architecture Documentation
 
 ## Table of Contents
 1. [System Overview](#system-overview)
@@ -15,7 +15,7 @@
 ## System Overview
 
 ### Purpose
-A bilingual technical blog for sharing knowledge about game servers, web servers, and open source projects (specifically Playhouse and ZeroMQ).
+A bilingual development blog for recording experiences and knowledge about game servers and server communication, featuring open source projects like Playhouse and ZeroMQ.
 
 ### Requirements Met
 - Jekyll-based static site generator

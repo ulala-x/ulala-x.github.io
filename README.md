@@ -1,6 +1,6 @@
-# Ulala-X Technical Blog
+# ULALA-X Dev Notes
 
-A bilingual (Korean/English) technical blog built with Jekyll and Chirpy theme, hosted on GitHub Pages.
+A bilingual (Korean/English) development blog built with Jekyll and Chirpy theme, hosted on GitHub Pages.
 
 ## Overview
 
