@@ -1,0 +1,11 @@
+# English Configuration Override
+
+lang: en-US
+
+title: Ulala-X Tech Blog
+tagline: Technical blog about game servers, web servers, and open source projects
+description: >-
+  Technical blog about game servers, web servers, and open source projects
+  including playhouse and zeromq.
+
+baseurl: "/en"

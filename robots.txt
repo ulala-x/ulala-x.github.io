@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ulala-x.github.io/sitemap.xml

@@ -1,0 +1,88 @@
+# Korean locale
+
+# Layout
+layout:
+  post: 포스트
+  category: 카테고리
+  tag: 태그
+
+# Post
+post:
+  written_by: 작성자
+  posted: 게시일
+  updated: 업데이트
+  timeago:
+    day: 일 전
+    hour: 시간 전
+    minute: 분 전
+    just_now: 방금
+  words: 단어
+  pageview_measure: 조회
+  read_time:
+    unit: 분
+    prompt: 읽기 시간
+  relate_posts: 관련 포스트
+  share: 공유하기
+  button:
+    next: 다음 글
+    previous: 이전 글
+    copy_code:
+      succeed: 복사됨!
+    share_link:
+      title: 링크 복사하기
+      succeed: 링크가 복사되었습니다!
+
+# Categories
+categories:
+  category_empty: 이 카테고리에는 아직 포스트가 없습니다.
+  all: 전체 보기
+
+# Tags
+tags:
+  tag_empty: 이 태그에는 아직 포스트가 없습니다.
+
+# Index
+index:
+  pinned: 고정됨
+
+# Panel
+panel:
+  lastmod: 최근 업데이트
+  trending_tags: 인기 태그
+  toc: 목차
+
+# Search
+search:
+  hint: 검색
+  cancel: 취소
+  no_results: 검색 결과가 없습니다.
+
+# Language
+language:
+  korean: 한국어
+  english: English
+  switch_to: 언어 전환
+
+# Navigation
+navigation:
+  home: 홈
+  archives: 아카이브
+  categories: 카테고리
+  tags: 태그
+  about: 소개
+
+# Footer
+footer:
+  powered_by: Powered by
+  theme_by: Theme
+
+# 404
+not_found:
+  statment: 죄송합니다. 해당 페이지를 찾을 수 없습니다.
+  hint_template: 홈페이지로 돌아가시겠습니까?
+  hint_link: 홈으로
+
+# Notification
+notification:
+  update_found: 새로운 버전이 있습니다.
+  update: 업데이트

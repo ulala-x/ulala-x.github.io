@@ -1,0 +1,141 @@
+# Site Configuration - Korean (Default)
+
+# Import the theme
+theme: jekyll-theme-chirpy
+
+# Language and Timezone
+lang: ko-KR
+timezone: Asia/Seoul
+
+# Site Settings
+title: Ulala-X 기술 블로그
+tagline: 게임 서버, 웹 서버, 오픈소스 프로젝트에 대한 기술 블로그
+description: >-
+  게임 서버, 웹 서버, 그리고 오픈소스 프로젝트(playhouse, zeromq)에 대한
+  기술 블로그입니다.
+
+# Base URL - for GitHub Pages user site
+url: "https://ulala-x.github.io"
+baseurl: ""
+
+# Author
+github:
+  username: ulala-x
+
+social:
+  name: Ulala-X
+  email: ulala.the.great@gmail.com
+  links:
+    - https://github.com/ulala-x
+
+# Site Verification (Add your verification codes if needed)
+# google_site_verification:
+# bing_site_verification:
+
+# Analytics (Add your tracking IDs if needed)
+# google_analytics:
+#   id:
+
+# Theme Mode
+# Options: [light, dark]
+theme_mode: # Leave empty for user preference
+
+# Avatar
+avatar: /assets/img/avatar.png
+
+# TOC (Table of Contents)
+toc: true
+
+# Comments
+comments:
+  active: # The global switch for posts comments, e.g., 'disqus'. Keep empty means disable
+  # disqus:
+  #   shortname:
+
+# Self-hosted static assets
+assets:
+  self_host:
+    enabled: false
+
+# PWA (Progressive Web App)
+pwa:
+  enabled: false
+
+# Pagination
+paginate: 10
+paginate_path: "/posts/page:num/"
+
+# Collections
+collections:
+  tabs:
+    output: true
+    sort_by: order
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      comments: true
+      toc: true
+      permalink: /posts/:categories/:title/
+      lang: ko
+  - scope:
+      path: "_posts_en"
+      type: posts
+    values:
+      layout: post
+      comments: true
+      toc: true
+      permalink: /en/posts/:categories/:title/
+      lang: en
+  - scope:
+      path: ""
+    values:
+      lang: ko
+
+# Sass
+sass:
+  style: compressed
+
+# Compress HTML
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  profile: false
+  blanklines: false
+  ignore:
+    envs: [development]
+
+# Exclude from processing
+exclude:
+  - "*.gem"
+  - "*.gemspec"
+  - docs
+  - tools
+  - README.md
+  - LICENSE
+  - rollup.config.js
+  - package*.json
+
+# Jekyll Archives
+jekyll-archives:
+  enabled: [categories, tags]
+  layouts:
+    category: category
+    tag: tag
+  permalinks:
+    tag: /tags/:name/
+    category: /categories/:name/
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-paginate
+  - jekyll-redirect-from
+  - jekyll-archives
