@@ -3,35 +3,29 @@ layout: ../layouts/AboutLayout.astro
 title: "About"
 ---
 
-AstroPaper is a minimal, accessible and SEO-friendly blog theme built with [Astro](https://astro.build/) and [Tailwind CSS](https://tailwindcss.com/).
+## 소개
 
-![Astro Paper](public/astropaper-og.jpg)
+20년 이상의 게임 서버 플랫폼 설계 및 개발 경험을 보유한 게임 서버 개발자입니다.
 
-AstroPaper provides a solid foundation for blogs, or even portfolios\_ with full markdown support, built-in dark mode, and a clean layout that works out-of-the-box.
+실시간 게임부터 웹 기반 게임까지 다양한 장르의 서버 플랫폼을 설계하고 구현해왔으며, 특히 TCP/IP 기반의 고성능 네트워크 시스템 구축에 전문성을 가지고 있습니다.
 
-The blog posts in this theme also serve as guides, docs or example articles\_ making AstroPaper a flexible starting point for your next content-driven site.
+C++, C#, Java, Kotlin 등 다양한 프로그래밍 언어를 활용하며, Spring과 .NET Framework에 대한 깊은 이해를 바탕으로 최적의 기술 스택을 선정하고 구현합니다.
 
-## Features
+## 주요 프로젝트
 
-AstroPaper comes with a set of useful features that make content publishing easy and effective:
+### Playhouse
+C#과 Kotlin 듀얼 버전으로 구현된 TCP 기반의 오픈소스 게임 서버 프레임워크입니다.
 
-- SEO-friendly
-- Fast performance
-- Light & dark mode
-- Highly customizable
-- Organizable blog posts
-- Responsive & accessible
-- Static search with [PageFind](https://pagefind.app/)
-- Automatic social image generation
+- 대규모 동시접속을 고려한 멀티스레딩 처리
+- 분산 시스템 설계
+- 높은 확장성과 안정성
 
-and so much more.
+## 블로그
 
-## Show your support
+이 블로그에서는 Playhouse 게임 서버 플랫폼 개발 과정과 게임 서버 개발에 관련된 기술적인 내용을 공유합니다.
 
-If you like [AstroPaper](https://github.com/satnaing/astro-paper), consider giving it a star ⭐️.
+## 연락처
 
-Found a bug 🐛 or have an improvement ✨ in mind? Feel free to open an [issue](https://github.com/satnaing/astro-paper/issues), submit a [pull request](https://github.com/satnaing/astro-paper/pulls) or start a [discussion](https://github.com/satnaing/astro-paper/discussions).
-
-If you find this theme helpful, you can also [sponsor me on GitHub](https://github.com/sponsors/satnaing) or [buy me a coffee](https://buymeacoffee.com/satnaing) to show your support — every penny counts.
-
-Kyay zuu! 🙏🏼
+- Email: [ulala.the.great@gmail.com](mailto:ulala.the.great@gmail.com)
+- LinkedIn: [linkedin.com/in/swahn0b9b0b6152](https://www.linkedin.com/in/swahn0b9b0b6152/)
+- GitHub: [github.com/ulala-x](https://github.com/ulala-x)
