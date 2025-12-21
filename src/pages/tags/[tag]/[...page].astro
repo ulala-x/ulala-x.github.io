@@ -1,0 +1,22 @@
+---
+import { getCollection } from "astro:content";
+import { slugifyStr } from "@/utils/slugify";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft && data.lang === "ko");
+
+  const tags = new Set<string>();
+  posts.forEach(post => {
+    post.data.tags.forEach(tag => tags.add(slugifyStr(tag.toLowerCase())));
+  });
+
+  return Array.from(tags).map(tag => ({
+    params: { tag, page: undefined },
+  }));
+}
+
+const { tag } = Astro.params;
+
+// Redirect to new Korean tag URL
+return Astro.redirect(`/ko/tags/${tag}`);
+---

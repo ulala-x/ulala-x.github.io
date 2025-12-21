@@ -1,0 +1,20 @@
+---
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft && data.lang === "ko");
+
+  return posts.map(post => {
+    // Extract slug from id (e.g., "ko/netzmq-memory-optimization-ko" -> "netzmq-memory-optimization-ko")
+    const slug = post.id.split('/').pop() || post.id;
+    return {
+      params: { slug },
+    };
+  });
+}
+
+const { slug } = Astro.params;
+
+// Redirect to new Korean post URL
+return Astro.redirect(`/ko/posts/${slug}`);
+---
