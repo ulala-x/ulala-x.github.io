@@ -12,11 +12,23 @@ export async function getStaticPaths() {
 
   return Array.from(tags).map(tag => ({
     params: { tag, page: undefined },
+    props: { tag },
   }));
 }
 
-const { tag } = Astro.params;
-
-// Redirect to new Korean tag URL
-return Astro.redirect(`/ko/tags/${tag}`);
+const { tag } = Astro.props;
+const redirectUrl = `/ko/tags/${tag}`;
 ---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url={redirectUrl}" />
+    <link rel="canonical" href={redirectUrl} />
+    <title>Redirecting...</title>
+  </head>
+  <body>
+    <p>Redirecting to <a href={redirectUrl}>{redirectUrl}</a>...</p>
+  </body>
+</html>

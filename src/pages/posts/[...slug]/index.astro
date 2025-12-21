@@ -9,12 +9,24 @@ export async function getStaticPaths() {
     const slug = post.id.split('/').pop() || post.id;
     return {
       params: { slug },
+      props: { slug },
     };
   });
 }
 
-const { slug } = Astro.params;
-
-// Redirect to new Korean post URL
-return Astro.redirect(`/ko/posts/${slug}`);
+const { slug } = Astro.props;
+const redirectUrl = `/ko/posts/${slug}`;
 ---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url={redirectUrl}" />
+    <link rel="canonical" href={redirectUrl} />
+    <title>Redirecting...</title>
+  </head>
+  <body>
+    <p>Redirecting to <a href={redirectUrl}>{redirectUrl}</a>...</p>
+  </body>
+</html>
