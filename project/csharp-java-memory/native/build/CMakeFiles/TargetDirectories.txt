@@ -1,0 +1,7 @@
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/mockzmq.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/edit_cache.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/rebuild_cache.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/list_install_components.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/install.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/install/local.dir
+/home/ulalax/project/ulalax/ulala-x.github.io/project/csharp-java-memory/native/build/CMakeFiles/install/strip.dir

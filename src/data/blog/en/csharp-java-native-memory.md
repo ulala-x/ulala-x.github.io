@@ -534,37 +534,67 @@ C# Marshal.Copy   ████████████████████�
 
 ### 4.2 Performance Impact Comparison
 
-**Cost of transferring 1MB data to native**:
+**Actual benchmark results for transferring 1MB data to native**:
+
+#### Send Operation (Read-only data transfer)
 
 | Language | Method | Time | Notes |
 |----------|--------|------|-------|
-| C# | Fixed (Zero-copy) | ~29 μs | Pinning only |
-| C# | Marshal.Copy | 1,330 μs | With copying |
-| Java | Heap → MemorySegment | 39,434 ns (39.4 μs) | Copying mandatory |
-| Java | Reusable buffer | 25,074 ns (25.1 μs) | Optimized copying |
+| C# | **Send_ZeroCopy (fixed)** | **112 μs** | Pinning overhead only |
+| Java | send_HeapCopyToNative (reusable) | 127 μs | Copy + native call |
+| C# | Send_WithCopy | 126 μs | Copy + native call |
+| Java | send_AllocateAndCopy (allocate each time) | 131 μs | Allocate + copy + call |
+
+**Analysis**:
+- C#'s Zero-copy is fastest at **112 μs**
+- Java's reusable buffer copy at 127 μs is nearly identical to C#'s With-copy (126 μs)
+- For 1MB data, **C# is approximately 13% faster** (with Zero-copy)
+
+#### Transform Operation (Read-write data transformation)
+
+| Language | Method | Time | Notes |
+|----------|--------|------|-------|
+| C# | **Transform_ZeroCopy (fixed)** | **20 μs** | Pin only, in-place transformation |
+| C# | Transform_WithCopy | 46 μs | 2 copies (round-trip) |
+| Java | transform_RoundTripCopy (reusable) | 65 μs | 2 copies (round-trip) |
+| Java | transform_AllocateAndRoundTrip | 80 μs | Allocate + 2 copies |
+
+**Analysis**:
+- C#'s Zero-copy dominates at **20 μs**
+- Java's reusable buffer copy at 65 μs is 1.4× slower than C#'s With-copy (46 μs)
+- C# Zero-copy is **3.25× faster** than Java's optimized copying
 
 **Key Insights**:
 
-1. **C# Zero-copy**: 29 μs (fastest)
-2. **Java optimized copying**: 25.1 μs (comparable to C#)
-3. **C# Marshal.Copy**: 1,330 μs (slowest)
-
-Interestingly, Java's reusable buffer copying is 53× faster than C#'s Marshal.Copy. However, C# can avoid copying altogether with fixed.
+1. **Send Operation (read-only)**: C# and Java difference is small (~13%)
+2. **Transform Operation (read-write)**: C#'s Zero-copy has decisive advantage (3.25× faster)
+3. **Java's Constraint**: Cannot pin heap arrays, must copy
+4. **C#'s Flexibility**: Can completely eliminate copy overhead with fixed keyword
 
 ### 4.3 Large Data Processing Scenario
 
-**Scenario**: Transfer 1MB data to native 1,000 times
+**Scenario 1**: Send 1MB data to native 1,000 times (read-only)
 
-| Language | Method | Total Time (Estimated) |
-|----------|--------|------------------------|
-| C# | Fixed (Zero-copy) | ~29 ms |
-| Java | Reusable buffer copy | ~25.1 ms |
-| Java | Allocate/copy each time | ~39.4 ms |
-| C# | Marshal.Copy | ~1,330 ms |
+| Language | Method | Total Time (Estimated) | Difference |
+|----------|--------|------------------------|------------|
+| C# | Send_ZeroCopy (fixed) | 112 ms | Baseline |
+| Java | send_HeapCopyToNative (reusable) | 127 ms | +13% |
+| C# | Send_WithCopy | 126 ms | +13% |
+
+**Scenario 2**: Transform 1MB data 1,000 times (read-write)
+
+| Language | Method | Total Time (Estimated) | Difference |
+|----------|--------|------------------------|------------|
+| C# | Transform_ZeroCopy (fixed) | 20 ms | Baseline (best performance) |
+| C# | Transform_WithCopy | 46 ms | +130% |
+| Java | transform_RoundTripCopy (reusable) | 65 ms | +225% |
+| Java | transform_AllocateAndRoundTrip | 80 ms | +300% |
 
 **Practical Implications**:
-- If the native library uses data read-only, C#'s fixed is optimal.
-- For Java, reusing buffers is essential. Allocating each time is 57% slower.
+- **Read-only operations**: C# and Java difference is minimal (~13%)
+- **Read-write operations**: C#'s Zero-copy has overwhelming advantage (3.25× faster)
+- **For in-place data transformation by native library**: strongly recommend C#'s fixed keyword
+- For Java, buffer reuse is essential. Allocating each time is 57% slower.
 
 ---
 

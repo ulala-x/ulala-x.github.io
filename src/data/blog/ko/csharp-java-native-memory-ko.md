@@ -536,36 +536,66 @@ C# Marshal.Copy   ████████████████████�
 
 ### 4.2 성능 임팩트 비교
 
-**1MB 데이터를 네이티브로 전달하는 비용**:
+**1MB 데이터를 네이티브로 전달하는 실제 벤치마크 결과**:
+
+#### Send 작업 (읽기 전용 데이터 전달)
 
 | 언어 | 방식 | 시간 | 비고 |
 |-----|-----|------|------|
-| C# | Fixed (Zero-copy) | ~29 μs | Pin만 |
-| C# | Marshal.Copy | 1,330 μs | 복사 포함 |
-| Java | Heap → MemorySegment | 39,434 ns (39.4 μs) | 복사 필수 |
-| Java | 재사용 버퍼 | 25,074 ns (25.1 μs) | 최적화된 복사 |
+| C# | **Send_ZeroCopy (fixed)** | **112 μs** | Pin 오버헤드만 |
+| Java | send_HeapCopyToNative (재사용 버퍼) | 127 μs | 복사 + 네이티브 호출 |
+| C# | Send_WithCopy | 126 μs | 복사 + 네이티브 호출 |
+| Java | send_AllocateAndCopy (매번 할당) | 131 μs | 할당 + 복사 + 호출 |
+
+**결과 분석**:
+- C#의 Zero-copy가 **112 μs**로 가장 빠름
+- Java의 재사용 버퍼 복사가 127 μs로 C#의 With-copy (126 μs)와 거의 동일
+- 1MB 데이터에서는 **C#이 약 13% 빠름** (Zero-copy 사용 시)
+
+#### Transform 작업 (읽기-쓰기 데이터 변환)
+
+| 언어 | 방식 | 시간 | 비고 |
+|-----|-----|------|------|
+| C# | **Transform_ZeroCopy (fixed)** | **20 μs** | Pin만, 제자리 변환 |
+| C# | Transform_WithCopy | 46 μs | 복사 2회 (왕복) |
+| Java | transform_RoundTripCopy (재사용 버퍼) | 65 μs | 복사 2회 (왕복) |
+| Java | transform_AllocateAndRoundTrip | 80 μs | 할당 + 복사 2회 |
+
+**결과 분석**:
+- C#의 Zero-copy가 **20 μs**로 압도적으로 빠름
+- Java의 재사용 버퍼 복사가 65 μs로 C#의 With-copy (46 μs)보다 1.4배 느림
+- C# Zero-copy는 Java 최적화 복사보다 **3.25배 빠름**
 
 **핵심 통찰**:
 
-1. **C# Zero-copy**: 29 μs (가장 빠름)
-2. **Java 최적화된 복사**: 25.1 μs (C#과 비슷)
-3. **C# Marshal.Copy**: 1,330 μs (가장 느림)
-
-흥미롭게도, Java가 재사용 버퍼로 복사하는 것이 C#의 Marshal.Copy보다 53배 빠릅니다. 하지만 C#은 fixed를 사용하면 복사 자체를 피할 수 있습니다.
+1. **Send 작업 (읽기 전용)**: C#과 Java의 차이는 작음 (약 13%)
+2. **Transform 작업 (읽기-쓰기)**: C#의 Zero-copy가 결정적인 우위 (3.25배 빠름)
+3. **Java의 제약**: Heap 배열을 pin할 수 없어 필수적으로 복사해야 함
+4. **C#의 유연성**: fixed 키워드로 복사 오버헤드를 완전히 제거 가능
 
 ### 4.3 대용량 데이터 처리 시나리오
 
-**시나리오**: 1MB 데이터를 1,000번 네이티브로 전달
+**시나리오 1**: 1MB 데이터를 1,000번 네이티브로 Send (읽기 전용)
 
-| 언어 | 방식 | 총 시간 (예측) |
-|-----|-----|---------------|
-| C# | Fixed (Zero-copy) | ~29 ms |
-| Java | 재사용 버퍼 복사 | ~25.1 ms |
-| Java | 매번 할당/복사 | ~39.4 ms |
-| C# | Marshal.Copy | ~1,330 ms |
+| 언어 | 방식 | 총 시간 (예측) | 차이 |
+|-----|-----|---------------|------|
+| C# | Send_ZeroCopy (fixed) | 112 ms | 기준 |
+| Java | send_HeapCopyToNative (재사용) | 127 ms | +13% |
+| C# | Send_WithCopy | 126 ms | +13% |
+
+**시나리오 2**: 1MB 데이터를 1,000번 Transform (읽기-쓰기)
+
+| 언어 | 방식 | 총 시간 (예측) | 차이 |
+|-----|-----|---------------|------|
+| C# | Transform_ZeroCopy (fixed) | 20 ms | 기준 (최고 성능) |
+| C# | Transform_WithCopy | 46 ms | +130% |
+| Java | transform_RoundTripCopy (재사용) | 65 ms | +225% |
+| Java | transform_AllocateAndRoundTrip | 80 ms | +300% |
 
 **실무 의미**:
-- 네이티브 라이브러리가 읽기 전용으로 데이터를 사용한다면, C#의 fixed가 최선입니다.
+- **읽기 전용 작업**: C#과 Java의 차이는 크지 않음 (약 13%)
+- **읽기-쓰기 작업**: C#의 Zero-copy가 압도적 우위 (3.25배 빠름)
+- **네이티브 라이브러리가 데이터를 제자리에서 변환하는 경우**: C#의 fixed 키워드 사용을 강력히 권장
 - Java는 버퍼를 재사용하는 것이 필수입니다. 매번 할당하면 57% 더 느립니다.
 
 ---
