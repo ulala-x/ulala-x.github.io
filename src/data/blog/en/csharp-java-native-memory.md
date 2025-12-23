@@ -47,6 +47,11 @@ C# provides several methods for handling native memory. Let's examine the perfor
 - Runtime: .NET 8.0.22
 - BenchmarkDotNet v0.14.0
 
+> **Time Unit Reference**
+> - **μs (microsecond)**: 1μs = 0.000001 sec = 1/1,000,000 sec
+> - **ns (nanosecond)**: 1ns = 0.000000001 sec = 1/1,000,000,000 sec
+> - Note: 1ms (millisecond) = 1,000μs = 1,000,000ns
+
 | Method | 64B | 1KB | 64KB | 1MB |
 |--------|-----|-----|------|-----|
 | StackAlloc | 11.7 μs | 12.1 μs | 30.0 μs | 106.1 μs |
