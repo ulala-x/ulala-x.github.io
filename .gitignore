@@ -36,3 +36,7 @@ Thumbs.db
 
 # Pagefind
 public/pagefind
+
+# Claude Code
+.claude/
+claude.md

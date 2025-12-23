@@ -1,0 +1,67 @@
+```
+
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.3 LTS (Noble Numbat)
+Intel Core Ultra 7 265K, 1 CPU, 20 logical and 20 physical cores
+.NET SDK 8.0.122
+  [Host]     : .NET 8.0.22 (8.0.2225.52707), X64 RyuJIT AVX2
+  Job-PGQRSE : .NET 8.0.22 (8.0.2225.52707), X64 RyuJIT AVX2
+  ShortRun   : .NET 8.0.22 (8.0.2225.52707), X64 RyuJIT AVX2
+
+Concurrent=True  Server=True  
+
+```
+| Method                  | Job        | Force | IterationCount | LaunchCount | WarmupCount | Size    | Iterations | Mean                | Error             | StdDev          | Ratio   | RatioSD | Allocated | Alloc Ratio |
+|------------------------ |----------- |------ |--------------- |------------ |------------ |-------- |----------- |--------------------:|------------------:|----------------:|--------:|--------:|----------:|------------:|
+| **MarshalAllocHGlobal**     | **Job-PGQRSE** | **False** | **Default**        | **Default**     | **Default**     | **64**      | **10000**      |      **74,279.7459 ns** |       **242.7754 ns** |     **202.7284 ns** |    **1.00** |    **0.00** |         **-** |          **NA** |
+| NativeMemoryAlloc       | Job-PGQRSE | False | Default        | Default     | Default     | 64      | 10000      |      63,601.6714 ns |       151.2818 ns |     141.5091 ns |    0.86 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | Job-PGQRSE | False | Default        | Default     | Default     | 64      | 10000      |     248,279.5676 ns |       238.6313 ns |     211.5404 ns |    3.34 |    0.01 |         - |          NA |
+| StackAlloc              | Job-PGQRSE | False | Default        | Default     | Default     | 64      | 10000      |      11,662.4312 ns |        36.4863 ns |      32.3441 ns |    0.16 |    0.00 |         - |          NA |
+| StackAllocZeroed        | Job-PGQRSE | False | Default        | Default     | Default     | 64      | 10000      |      19,160.4946 ns |       114.8794 ns |     107.4583 ns |    0.26 |    0.00 |         - |          NA |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| MarshalAllocHGlobal     | ShortRun   | True  | 3              | 1           | 3           | 64      | 10000      |      57,922.0669 ns |       686.4399 ns |      37.6261 ns |    1.00 |    0.00 |         - |          NA |
+| NativeMemoryAlloc       | ShortRun   | True  | 3              | 1           | 3           | 64      | 10000      |      51,230.3921 ns |     1,861.1072 ns |     102.0136 ns |    0.88 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | ShortRun   | True  | 3              | 1           | 3           | 64      | 10000      |     238,638.4787 ns |    10,588.7677 ns |     580.4061 ns |    4.12 |    0.01 |         - |          NA |
+| StackAlloc              | ShortRun   | True  | 3              | 1           | 3           | 64      | 10000      |      11,714.0446 ns |       716.4583 ns |      39.2715 ns |    0.20 |    0.00 |         - |          NA |
+| StackAllocZeroed        | ShortRun   | True  | 3              | 1           | 3           | 64      | 10000      |      22,375.3705 ns |       217.8421 ns |      11.9407 ns |    0.39 |    0.00 |         - |          NA |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| **MarshalAllocHGlobal**     | **Job-PGQRSE** | **False** | **Default**        | **Default**     | **Default**     | **1024**    | **10000**      |      **74,138.6278 ns** |       **167.8283 ns** |     **156.9867 ns** |    **1.00** |    **0.00** |         **-** |          **NA** |
+| NativeMemoryAlloc       | Job-PGQRSE | False | Default        | Default     | Default     | 1024    | 10000      |      63,723.3496 ns |        63.9532 ns |      59.8218 ns |    0.86 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | Job-PGQRSE | False | Default        | Default     | Default     | 1024    | 10000      |     410,476.8297 ns |       564.0243 ns |     499.9929 ns |    5.54 |    0.01 |         - |          NA |
+| StackAlloc              | Job-PGQRSE | False | Default        | Default     | Default     | 1024    | 10000      |                  NA |                NA |              NA |       ? |       ? |        NA |           ? |
+| StackAllocZeroed        | Job-PGQRSE | False | Default        | Default     | Default     | 1024    | 10000      |                  NA |                NA |              NA |       ? |       ? |        NA |           ? |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| MarshalAllocHGlobal     | ShortRun   | True  | 3              | 1           | 3           | 1024    | 10000      |      57,668.3771 ns |     1,373.2285 ns |      75.2713 ns |    1.00 |    0.00 |         - |          NA |
+| NativeMemoryAlloc       | ShortRun   | True  | 3              | 1           | 3           | 1024    | 10000      |      59,827.7656 ns |     5,271.6244 ns |     288.9555 ns |    1.04 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | ShortRun   | True  | 3              | 1           | 3           | 1024    | 10000      |     412,963.0047 ns |    17,630.2708 ns |     966.3746 ns |    7.16 |    0.02 |         - |          NA |
+| StackAlloc              | ShortRun   | True  | 3              | 1           | 3           | 1024    | 10000      |                  NA |                NA |              NA |       ? |       ? |        NA |           ? |
+| StackAllocZeroed        | ShortRun   | True  | 3              | 1           | 3           | 1024    | 10000      |                  NA |                NA |              NA |       ? |       ? |        NA |           ? |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| **MarshalAllocHGlobal**     | **Job-PGQRSE** | **False** | **Default**        | **Default**     | **Default**     | **65536**   | **10000**      |     **276,049.4553 ns** |       **565.6394 ns** |     **529.0995 ns** |   **1.000** |    **0.00** |         **-** |          **NA** |
+| NativeMemoryAlloc       | Job-PGQRSE | False | Default        | Default     | Default     | 65536   | 10000      |     275,970.5197 ns |       726.5682 ns |     644.0838 ns |   1.000 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | Job-PGQRSE | False | Default        | Default     | Default     | 65536   | 10000      |   6,905,717.3224 ns |    33,753.8770 ns |  31,573.3975 ns |  25.016 |    0.12 |       6 B |          NA |
+| StackAlloc              | Job-PGQRSE | False | Default        | Default     | Default     | 65536   | 10000      |           0.1957 ns |         0.0027 ns |       0.0025 ns |   0.000 |    0.00 |         - |          NA |
+| StackAllocZeroed        | Job-PGQRSE | False | Default        | Default     | Default     | 65536   | 10000      |           0.2348 ns |         0.0027 ns |       0.0025 ns |   0.000 |    0.00 |         - |          NA |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| MarshalAllocHGlobal     | ShortRun   | True  | 3              | 1           | 3           | 65536   | 10000      |     266,898.9199 ns |     4,349.9123 ns |     238.4334 ns |   1.000 |    0.00 |         - |          NA |
+| NativeMemoryAlloc       | ShortRun   | True  | 3              | 1           | 3           | 65536   | 10000      |     261,124.4032 ns |     2,165.6720 ns |     118.7078 ns |   0.978 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | ShortRun   | True  | 3              | 1           | 3           | 65536   | 10000      |   6,977,999.2253 ns | 1,362,639.4509 ns |  74,690.8666 ns |  26.145 |    0.24 |       6 B |          NA |
+| StackAlloc              | ShortRun   | True  | 3              | 1           | 3           | 65536   | 10000      |           0.2002 ns |         0.0838 ns |       0.0046 ns |   0.000 |    0.00 |         - |          NA |
+| StackAllocZeroed        | ShortRun   | True  | 3              | 1           | 3           | 65536   | 10000      |           0.2310 ns |         0.0124 ns |       0.0007 ns |   0.000 |    0.00 |         - |          NA |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| **MarshalAllocHGlobal**     | **Job-PGQRSE** | **False** | **Default**        | **Default**     | **Default**     | **1048576** | **10000**      |     **282,547.7542 ns** |       **697.9820 ns** |     **582.8465 ns** |   **1.000** |    **0.00** |         **-** |          **NA** |
+| NativeMemoryAlloc       | Job-PGQRSE | False | Default        | Default     | Default     | 1048576 | 10000      |     272,155.9321 ns |       538.0953 ns |     503.3347 ns |   0.963 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | Job-PGQRSE | False | Default        | Default     | Default     | 1048576 | 10000      | 131,439,862.8750 ns |   446,209.9072 ns | 348,371.3452 ns | 465.197 |    1.50 |     196 B |          NA |
+| StackAlloc              | Job-PGQRSE | False | Default        | Default     | Default     | 1048576 | 10000      |           0.1948 ns |         0.0014 ns |       0.0012 ns |   0.000 |    0.00 |         - |          NA |
+| StackAllocZeroed        | Job-PGQRSE | False | Default        | Default     | Default     | 1048576 | 10000      |           0.2230 ns |         0.0088 ns |       0.0078 ns |   0.000 |    0.00 |         - |          NA |
+|                         |            |       |                |             |             |         |            |                     |                   |                 |         |         |           |             |
+| MarshalAllocHGlobal     | ShortRun   | True  | 3              | 1           | 3           | 1048576 | 10000      |     300,515.1724 ns |     9,422.0498 ns |     516.4543 ns |   1.000 |    0.00 |         - |          NA |
+| NativeMemoryAlloc       | ShortRun   | True  | 3              | 1           | 3           | 1048576 | 10000      |     263,729.2581 ns |     5,396.6346 ns |     295.8078 ns |   0.878 |    0.00 |         - |          NA |
+| NativeMemoryAllocZeroed | ShortRun   | True  | 3              | 1           | 3           | 1048576 | 10000      | 131,308,773.6667 ns | 5,044,137.8293 ns | 276,486.2162 ns | 436.946 |    1.03 |     184 B |          NA |
+| StackAlloc              | ShortRun   | True  | 3              | 1           | 3           | 1048576 | 10000      |           0.2068 ns |         0.0180 ns |       0.0010 ns |   0.000 |    0.00 |         - |          NA |
+| StackAllocZeroed        | ShortRun   | True  | 3              | 1           | 3           | 1048576 | 10000      |           0.2350 ns |         0.0395 ns |       0.0022 ns |   0.000 |    0.00 |         - |          NA |
+
+Benchmarks with issues:
+  AllocationBenchmarks.StackAlloc: Job-PGQRSE(Concurrent=True, Force=False, Server=True) [Size=1024, Iterations=10000]
+  AllocationBenchmarks.StackAllocZeroed: Job-PGQRSE(Concurrent=True, Force=False, Server=True) [Size=1024, Iterations=10000]
+  AllocationBenchmarks.StackAlloc: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3) [Size=1024, Iterations=10000]
+  AllocationBenchmarks.StackAllocZeroed: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3) [Size=1024, Iterations=10000]

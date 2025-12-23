@@ -1,5 +1,7 @@
 # Ulala-X Blog
 
+🔗 **Blog**: [https://ulala-x.github.io](https://ulala-x.github.io)
+
 Personal technical blog built with [Astro](https://astro.build) and [AstroPaper](https://github.com/satnaing/astro-paper) theme.
 
 ## Features
