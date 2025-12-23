@@ -394,9 +394,135 @@ unsafe {
 
 ---
 
-## Chapter 3: Pin vs Copy - Core Differences
+## Chapter 3: C# vs Java Direct Comparison
 
-### 3.1 Architectural-Level Differences
+Now let's directly compare the performance of both languages. These results were measured in the same test environment.
+
+### 3.1 Memory Allocation Performance Comparison
+
+**64B Small Data Allocation**:
+
+```
+Fast ◀─────────────────────────────────────────────▶ Slow
+
+Java Confined   ██ 0.042 μs
+Java Global     ███ 0.088 μs
+Java Auto       █████ 0.48 μs
+C# StackAlloc   ██████████████████████████████ 11.7 μs
+Java Shared     ███████████████████████████████████████████████████████████████ 31.6 μs
+C# NativeAlloc  ███████████████████████████████████████████████████████████████████████████████████ 63.6 μs
+C# Marshal      ██████████████████████████████████████████████████████████████████████████████████████████ 74.3 μs
+```
+
+**1MB Large Data Allocation**:
+
+```
+Fast ◀─────────────────────────────────────────────▶ Slow
+
+Java Confined   ██ 13.4 μs
+Java Shared     ████ 53.6 μs
+C# NativeAlloc  █████ 61.4 μs
+C# Marshal      ███████ 86.3 μs
+C# StackAlloc   █████████ 106.1 μs
+Java Global     ██████████████████████████████████████████████████████████████████████ 559 μs
+Java Auto       ███████████████████████████████████████████████████████████████████████████████ 636 μs
+```
+
+| Size | C# Best Performance | Java Best Performance | Winner |
+|------|--------------------|-----------------------|--------|
+| 64B | StackAlloc (11.7 μs) | Confined (0.042 μs) | **Java 279× faster** |
+| 1KB | StackAlloc (12.1 μs) | Confined (0.047 μs) | **Java 257× faster** |
+| 64KB | StackAlloc (30.0 μs) | Confined (0.89 μs) | **Java 34× faster** |
+| 1MB | NativeAlloc (61.4 μs) | Confined (13.4 μs) | **Java 4.6× faster** |
+
+> **Insight**: Looking at allocation alone, Java's Confined Arena is overwhelmingly faster.
+> However, this only compares "allocation" - actual native transfer requires additional copy costs.
+
+### 3.2 Heap → Native Data Transfer Performance Comparison
+
+Comparing the total cost of transferring heap data to native code.
+
+**64B Small Data Transfer**:
+
+```
+Fast ◀─────────────────────────────────────────────▶ Slow
+
+Java Reusable    █ 0.0025 μs (copy)
+C# MemoryMarshal ████████████████████████████████████████████ 4.2 μs (Zero-copy)
+C# Fixed         ██████████████████████████████████████████████████████████ 5.8 μs (Zero-copy)
+C# Marshal.Copy  ██████████████████████████████████████████████████████████████████████████████████████████████████ 11.2 μs (copy)
+Java Each Alloc  ████████████████████████████████████████ 0.044 μs (copy+alloc)
+```
+
+**1MB Large Data Transfer**:
+
+```
+Fast ◀─────────────────────────────────────────────▶ Slow
+
+Java Reusable     ██ 25.1 μs (copy)
+C# Fixed          ██ 28.9 μs (Zero-copy, pin only)
+Java Each Alloc   ███ 39.4 μs (copy+alloc)
+C# Marshal.Copy   █████████████████████████████████████████████████████████████████████████████████ 1,330 μs (copy)
+```
+
+| Size | C# Zero-copy (Fixed) | Java Reusable Buffer Copy | Notes |
+|------|---------------------|---------------------------|-------|
+| 64B | 5.8 μs | 0.0025 μs | Java 2,320× faster |
+| 1KB | 5.8 μs | 0.0084 μs | Java 690× faster |
+| 64KB | 26.4 μs | 1.39 μs | Java 19× faster |
+| 1MB | 28.9 μs | 25.1 μs | **Nearly identical** |
+
+> **Key Findings**:
+> - **Small data (< 64KB)**: Java's reusable buffer copy is faster than C#'s Zero-copy!
+> - **Large data (≥ 1MB)**: Both languages show nearly identical performance.
+> - C#'s `Marshal.Copy` is the slowest across all sizes.
+
+### 3.3 Why These Results?
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Performance Reversal Analysis                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  [Small Data < 64KB]                                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ C# Fixed: GC pause + memory pinning overhead > actual copy cost  │   │
+│  │ Java Copy: Only performs simple memcpy (very fast)               │   │
+│  │                                                                   │   │
+│  │ → For small data, copying is faster than pinning!                │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  [Large Data ≥ 1MB]                                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ C# Fixed: Pinning overhead 28.9 μs (size-independent)            │   │
+│  │ Java Copy: memcpy 25.1 μs (proportional to size)                 │   │
+│  │                                                                   │
+│  │ → As size grows, copy cost increases to match Zero-copy          │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  [Conclusion]                                                           │
+│  • Under 64KB: Java reusable buffer is more efficient                  │
+│  • 1MB+: C# Zero-copy and Java copy perform equally                    │
+│  • 10MB+: C# Zero-copy starts showing advantages                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.4 Practical Selection Guide (By Size)
+
+| Data Size | Recommended Language/Method | Reason |
+|-----------|----------------------------|--------|
+| < 1KB | Java or C# | Performance difference negligible (< 10μs) |
+| 1KB ~ 64KB | Java (reusable buffer) | Copy faster than pin |
+| 64KB ~ 1MB | Either works | Performance convergence zone |
+| > 1MB | C# (Fixed) | Zero-copy advantage emerges |
+| > 10MB | **C# (Fixed) strongly recommended** | Copy costs skyrocket |
+
+---
+
+## Chapter 4: Pin vs Copy - Architectural Differences
+
+### 4.1 Architectural-Level Differences
 
 | Feature | C# | Java |
 |---------|-----|------|
@@ -406,7 +532,7 @@ unsafe {
 | **Performance** | Zero copy cost | Copy cost proportional to size |
 | **Safety** | Requires unsafe blocks | Type-safe |
 
-### 3.2 Performance Impact Comparison
+### 4.2 Performance Impact Comparison
 
 **Cost of transferring 1MB data to native**:
 
@@ -425,7 +551,7 @@ unsafe {
 
 Interestingly, Java's reusable buffer copying is 53× faster than C#'s Marshal.Copy. However, C# can avoid copying altogether with fixed.
 
-### 3.3 Large Data Processing Scenario
+### 4.3 Large Data Processing Scenario
 
 **Scenario**: Transfer 1MB data to native 1,000 times
 
@@ -442,9 +568,9 @@ Interestingly, Java's reusable buffer copying is 53× faster than C#'s Marshal.C
 
 ---
 
-## Chapter 4: Practical Application Guide
+## Chapter 5: Practical Application Guide
 
-### 4.1 C# Native Memory Usage Patterns
+### 5.1 C# Native Memory Usage Patterns
 
 **Pattern 1: Passing Read-only Data to Native**
 
@@ -509,7 +635,7 @@ unsafe
 }
 ```
 
-### 4.2 Java Native Memory Usage Patterns
+### 5.2 Java Native Memory Usage Patterns
 
 **Pattern 1: Minimize Allocation by Reusing Arena**
 
@@ -561,7 +687,7 @@ MemorySegment segment = MemorySegment.ofBuffer(directBuffer);
 nativeProcess(segment.address());
 ```
 
-### 4.3 When to Choose Which Language
+### 5.3 When to Choose Which Language
 
 **Choose C# when**:
 
