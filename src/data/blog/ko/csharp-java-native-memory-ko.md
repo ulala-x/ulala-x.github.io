@@ -539,7 +539,7 @@ try (Arena arena = Arena.ofConfined()) {
 
     while (hasMoreData()) {
         byte[] heapChunk = readChunk();
-        MemorySegment.copy(heapChunk, 0, chunk, 0, heapChunk.length);
+        MemorySegment.copy(heapChunk, 0, chunk, ValueLayout.JAVA_BYTE, 0, heapChunk.length);
         processChunk(chunk);
     }
 }
