@@ -95,7 +95,7 @@ try {
 
 | Method | Location | GC Managed | Deallocation | Characteristics |
 |--------|----------|------------|--------------|-----------------|
-| `stackalloc` | Stack | ❌ | Automatic (scope exit) | Fastest, size limited (~1MB) |
+| `stackalloc` | Stack | ❌ | Automatic (scope exit) | Fastest, size limited (max ~1MB, recommended < 1KB) |
 | `NativeMemory.Alloc` | Native Heap | ❌ | Manual (`Free`) | Consistent performance, modern API |
 | `Marshal.AllocHGlobal` | Native Heap | ❌ | Manual (`FreeHGlobal`) | Legacy, P/Invoke compatible |
 | `new byte[]` | Managed Heap | ✅ | GC | Safest, GC overhead |
@@ -196,9 +196,9 @@ unsafe
 
 | Method | Internal Operation | Pinning Required | Advantages | Disadvantages |
 |--------|-------------------|------------------|------------|---------------|
-| `Marshal.Copy` | Internally pin + memcpy | Automatic | Fastest, simple | No unsafe needed |
-| `Buffer.MemoryCopy` | Direct memcpy call | Manual (fixed) | Flexible | Explicit pin required |
-| `Span.CopyTo` | Internally memmove | Manual (fixed) | Modern API | Slightly slower |
+| `Marshal.Copy` | Internally pin + memcpy | Automatic | Fastest, simple, no unsafe needed | Requires IntPtr |
+| `Buffer.MemoryCopy` | Direct memcpy call | Manual (fixed) | Flexible, direct pointer control | Requires unsafe block |
+| `Span.CopyTo` | Internally memmove | Manual (fixed) | Modern API, type-safe | Slightly slower |
 
 **Memory usage pattern comparison between copy and zero-copy methods**:
 
@@ -357,7 +357,7 @@ Java cannot pin heap arrays. Therefore, **copying is mandatory for all heap data
 byte[] heapArray = new byte[1024];
 try (Arena arena = Arena.ofConfined()) {
     MemorySegment segment = arena.allocate(1024);
-    MemorySegment.copy(heapArray, 0, segment, 0, 1024); // Copy occurs
+    MemorySegment.copy(heapArray, 0, segment, ValueLayout.JAVA_BYTE, 0, 1024); // Copy occurs
     nativeProcess(segment);
 }
 ```
@@ -422,7 +422,7 @@ Interestingly, Java's reusable buffer copying is 53× faster than C#'s Marshal.C
 
 ### 3.3 Large Data Processing Scenario
 
-**Scenario**: Transfer 64MB data to native 1,000 times
+**Scenario**: Transfer 1MB data to native 1,000 times
 
 | Language | Method | Total Time (Estimated) |
 |----------|--------|------------------------|

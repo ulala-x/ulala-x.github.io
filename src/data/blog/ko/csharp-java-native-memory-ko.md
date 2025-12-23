@@ -95,7 +95,7 @@ try {
 
 | 방식 | 할당 위치 | GC 관리 | 해제 방식 | 특징 |
 |-----|---------|--------|---------|-----|
-| `stackalloc` | 스택 | ❌ | 자동 (스코프 종료) | 가장 빠름, 크기 제한 (~1MB) |
+| `stackalloc` | 스택 | ❌ | 자동 (스코프 종료) | 가장 빠름, 크기 제한 (최대 ~1MB, 권장 < 1KB) |
 | `NativeMemory.Alloc` | 네이티브 힙 | ❌ | 수동 (`Free`) | 일정한 성능, 현대적 API |
 | `Marshal.AllocHGlobal` | 네이티브 힙 | ❌ | 수동 (`FreeHGlobal`) | 레거시, P/Invoke 호환 |
 | `new byte[]` | Managed Heap | ✅ | GC | 가장 안전, GC 부하 |
@@ -197,9 +197,9 @@ unsafe
 
 | 방식 | 내부 동작 | Pin 필요 | 장점 | 단점 |
 |-----|---------|---------|-----|-----|
-| `Marshal.Copy` | 내부적으로 pin + memcpy | 자동 | 가장 빠름, 간단 | unsafe 불필요 |
-| `Buffer.MemoryCopy` | memcpy 직접 호출 | 수동 (fixed) | 유연함 | 명시적 pin 필요 |
-| `Span.CopyTo` | 내부적으로 memmove | 수동 (fixed) | 현대적 API | 약간 느림 |
+| `Marshal.Copy` | 내부적으로 pin + memcpy | 자동 | 가장 빠름, 간단, unsafe 불필요 | IntPtr 사용 필요 |
+| `Buffer.MemoryCopy` | memcpy 직접 호출 | 수동 (fixed) | 유연함, 포인터 직접 제어 | unsafe 블록 필요 |
+| `Span.CopyTo` | 내부적으로 memmove | 수동 (fixed) | 현대적 API, 타입 안전 | 약간 느림 |
 
 **복사 방식과 Zero-copy 방식의 메모리 사용 패턴 비교**:
 
@@ -359,7 +359,7 @@ Java는 Heap 배열을 pin할 수 없습니다. 따라서 **모든 Heap 데이�
 byte[] heapArray = new byte[1024];
 try (Arena arena = Arena.ofConfined()) {
     MemorySegment segment = arena.allocate(1024);
-    MemorySegment.copy(heapArray, 0, segment, 0, 1024); // 복사 발생
+    MemorySegment.copy(heapArray, 0, segment, ValueLayout.JAVA_BYTE, 0, 1024); // 복사 발생
     nativeProcess(segment);
 }
 ```
@@ -424,7 +424,7 @@ unsafe {
 
 ### 3.3 대용량 데이터 처리 시나리오
 
-**시나리오**: 64MB 데이터를 1,000번 네이티브로 전달
+**시나리오**: 1MB 데이터를 1,000번 네이티브로 전달
 
 | 언어 | 방식 | 총 시간 (예측) |
 |-----|-----|---------------|
