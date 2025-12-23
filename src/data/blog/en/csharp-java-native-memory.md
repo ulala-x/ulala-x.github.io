@@ -61,6 +61,60 @@ C# provides several methods for handling native memory. Let's examine the perfor
 
 **Practical Guide**: Use StackAlloc for small sizes that can be safely allocated on the stack (< 1KB), otherwise use NativeMemory.Alloc.
 
+**Specific usage examples for each allocation method**:
+
+```csharp
+// 1. StackAlloc - Allocate on stack memory
+unsafe
+{
+    byte* buffer = stackalloc byte[1024];
+    // Automatically freed when function exits
+}
+
+// 2. NativeMemory.Alloc - Allocate on native heap (.NET 6+)
+unsafe
+{
+    byte* buffer = (byte*)NativeMemory.Alloc(1024);
+    try {
+        // Use
+    } finally {
+        NativeMemory.Free(buffer);
+    }
+}
+
+// 3. Marshal.AllocHGlobal - Allocate on native heap (legacy)
+IntPtr buffer = Marshal.AllocHGlobal(1024);
+try {
+    // Use
+} finally {
+    Marshal.FreeHGlobal(buffer);
+}
+```
+
+**Memory allocation method characteristics comparison**:
+
+| Method | Location | GC Managed | Deallocation | Characteristics |
+|--------|----------|------------|--------------|-----------------|
+| `stackalloc` | Stack | ❌ | Automatic (scope exit) | Fastest, size limited (~1MB) |
+| `NativeMemory.Alloc` | Native Heap | ❌ | Manual (`Free`) | Consistent performance, modern API |
+| `Marshal.AllocHGlobal` | Native Heap | ❌ | Manual (`FreeHGlobal`) | Legacy, P/Invoke compatible |
+| `new byte[]` | Managed Heap | ✅ | GC | Safest, GC overhead |
+
+**C# process memory structure**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Process Memory                          │
+├─────────────────┬─────────────────┬─────────────────────────┤
+│   Stack         │  Managed Heap   │     Native Heap         │
+├─────────────────┼─────────────────┼─────────────────────────┤
+│ • stackalloc    │ • new byte[]    │ • NativeMemory.Alloc    │
+│ • Local vars    │ • GC managed    │ • Marshal.AllocHGlobal  │
+│ • Auto freed    │ • Auto freed    │ • Manual free required  │
+│ • ~1MB limit    │ • No size limit │ • No size limit         │
+└─────────────────┴─────────────────┴─────────────────────────┘
+```
+
 ### 1.2 C#'s Core Strength: Zero-copy Pinning
 
 C#'s most powerful feature is Zero-copy transfer using the `fixed` keyword.
@@ -110,7 +164,71 @@ We compared methods for transferring data from managed arrays to native memory.
 
 1. **For small sizes (64B)**, all methods are similar (approximately 11-13 μs).
 2. **For 1MB data**, Marshal.Copy is fastest at 1,330 μs, while Buffer.MemoryCopy is 1.6× slower at 2,146 μs.
-3. **If copying can be avoided**, pinning with fixed for Zero-copy transfer is optimal.
+3. **If copying is necessary**, Marshal.Copy is the fastest. However, for read-only operations, pinning with fixed for zero-copy transfer as shown in Section 1.2 is optimal.
+
+**Specific usage for each copy method**:
+
+```csharp
+byte[] managedArray = new byte[1024];
+IntPtr nativePtr = Marshal.AllocHGlobal(1024);
+
+// 1. Marshal.Copy - Managed → Native copy
+Marshal.Copy(managedArray, 0, nativePtr, 1024);
+
+// 2. Buffer.MemoryCopy - Copy after pinning with fixed
+unsafe
+{
+    fixed (byte* src = managedArray)
+    {
+        Buffer.MemoryCopy(src, (void*)nativePtr, 1024, 1024);
+    }
+}
+
+// 3. Span.CopyTo - Span-based copy
+unsafe
+{
+    Span<byte> nativeSpan = new Span<byte>((void*)nativePtr, 1024);
+    managedArray.AsSpan().CopyTo(nativeSpan);
+}
+```
+
+**Internal operation comparison for copy methods**:
+
+| Method | Internal Operation | Pinning Required | Advantages | Disadvantages |
+|--------|-------------------|------------------|------------|---------------|
+| `Marshal.Copy` | Internally pin + memcpy | Automatic | Fastest, simple | No unsafe needed |
+| `Buffer.MemoryCopy` | Direct memcpy call | Manual (fixed) | Flexible | Explicit pin required |
+| `Span.CopyTo` | Internally memmove | Manual (fixed) | Modern API | Slightly slower |
+
+**Memory usage pattern comparison between copy and zero-copy methods**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Copy Method] Marshal.Copy / Buffer.MemoryCopy               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Managed Heap          memcpy           Native Heap        │
+│  ┌──────────┐    ──────────────────>   ┌──────────┐        │
+│  │ byte[]   │      Data copied          │ IntPtr   │        │
+│  └──────────┘                          └──────────┘        │
+│                                                             │
+│   → 2× memory usage, copy time required                    │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ [Zero-copy] fixed keyword                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Managed Heap                                              │
+│  ┌──────────┐                                               │
+│  │ byte[]   │ ←── Pinned with fixed (GC cannot move)        │
+│  └────┬─────┘                                               │
+│       │                                                     │
+│       └──→ Pointer directly passed to native code           │
+│                                                             │
+│   → 1× memory usage, zero copy time                        │
+└─────────────────────────────────────────────────────────────┘
+```
 
 **Practical Application**:
 ```csharp
@@ -162,6 +280,57 @@ Since JDK 14, Java has improved native memory management through the Foreign Mem
 - Java Confined Arena: 42 ns ~ 13.4 μs (size-dependent)
 
 Java is faster for small sizes, but performance drops dramatically when using Shared Arena for thread safety.
+
+**Usage examples for each Arena type**:
+
+```java
+// 1. Confined Arena - Single thread only, fastest
+try (Arena arena = Arena.ofConfined()) {
+    MemorySegment segment = arena.allocate(1024);
+    // Only usable in this thread
+} // Automatically freed
+
+// 2. Shared Arena - Thread-safe
+try (Arena arena = Arena.ofShared()) {
+    MemorySegment segment = arena.allocate(1024);
+    // Shareable across threads
+} // Automatically freed
+
+// 3. Global Arena - Permanent allocation
+MemorySegment segment = Arena.global().allocate(1024);
+// Persists until process termination, cannot be freed
+
+// 4. Auto Arena - GC-based automatic management
+Arena arena = Arena.ofAuto();
+MemorySegment segment = arena.allocate(1024);
+// No close() needed, GC manages
+```
+
+**Arena type characteristics comparison**:
+
+| Arena Type | Thread-Safe | Deallocation | Performance | Use Case |
+|-----------|-------------|--------------|-------------|----------|
+| `Confined` | ❌ Single thread | try-with-resources | 🚀 Fastest | Local operations |
+| `Shared` | ✅ Multi-threaded | try-with-resources | 🐢 Sync overhead | Cross-thread sharing |
+| `Global` | ✅ Multi-threaded | Cannot free | ⚡ Fast | Constants, global data |
+| `Auto` | ✅ Multi-threaded | GC automatic | 🔄 GC dependent | Unclear lifetime |
+
+**Java process memory structure**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      JVM Process Memory                      │
+├─────────────────────┬───────────────────────────────────────┤
+│     Java Heap       │           Native Memory               │
+├─────────────────────┼───────────────────────────────────────┤
+│ • byte[] arrays     │ • MemorySegment (Arena)               │
+│ • Object instances  │ • DirectByteBuffer internal buffer    │
+│ • GC managed        │ • JNI native allocation               │
+│                     │ • Released via Arena.close()          │
+├─────────────────────┴───────────────────────────────────────┤
+│  ⚠️ Java cannot pin Heap arrays → Copy mandatory for Native │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### 2.2 Java's Fundamental Constraint: Mandatory Heap → Native Copying
 
