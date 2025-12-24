@@ -40,3 +40,9 @@ public/pagefind
 # Claude Code
 .claude/
 claude.md
+
+# Project build artifacts
+project/csharp-java-memory/native/build/
+project/csharp-java-memory/csharp/**/bin/
+project/csharp-java-memory/csharp/**/obj/
+project/csharp-java-memory/java/target/

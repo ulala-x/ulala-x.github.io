@@ -1,1 +1,0 @@
-/usr/bin/cc -fPIC -O3 -DNDEBUG -shared -Wl,-soname,libmockzmq.so.1 -o libmockzmq.so.1.0.0 CMakeFiles/mockzmq.dir/src/mock_zmq.c.o 
